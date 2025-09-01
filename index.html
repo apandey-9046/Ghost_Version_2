@@ -27,6 +27,9 @@
             }
         }
     </script>
+
+    <!-- ✅ Transformers.js for Browser-Based AI -->
+    <script src="https://cdn.jsdelivr.net/npm/@xenova/transformers@2.5.0"></script>
 </head>
 
 <body>
@@ -71,7 +74,7 @@
             <input type="text" class="input-field" id="userInput" placeholder="Type a message..." />
             <div class="input-buttons">
                 <button class="action-button" id="voiceButton" title="Toggle voice">🔊</button>
-                <button class="action-button" id="micButton" title="Hold to speak">🎤</button>
+                <button class="action-button" id="micButton" title="Press to wake">🎤</button>
                 <button class="send-button" id="sendButton">Send</button>
             </div>
         </div>
@@ -83,8 +86,8 @@
     </div>
 
     <!-- Scripts -->
-     <script src="index.js"></script>
     <script src="script.js"></script>
+    <script src="index.js"></script>
 </body>
 
 </html>

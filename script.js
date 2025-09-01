@@ -16,16 +16,37 @@ let currentUtterance = null;
 let isChatUnlocked = false;
 let deferredPrompt = null; // For PWA install
 let silenceTimer = null; // For auto-send after silence
+let aiModel = null; // For Qwen
 
 // Passwords
 const START_CHAT_PASSWORD = "Admin123";
 const CLEAR_CHAT_PASSWORD = "Arpit@232422";
 
+// User & AI Info
+const USER_NAME = "Arpit";
+const AI_NAME = "Ghost";
+const AI_BIRTH_DATE = new Date("2025-09-01"); // Ghost's "birth" date
+
+// Arpit's Profile Context (for AI)
+const PROFILE_CONTEXT = `
+Arpit Pandey is a 20-year-old Full Stack Developer who has completed his BCA.
+He is skilled in HTML, CSS, JavaScript, and Python.
+His projects include:
+- Task Manager App
+- Stone Paper Scissors Game
+- E-Commerce Website
+- Quiz App
+- Professional Dashboard
+- Expense Manager
+He is passionate about building sleek, modern web apps with smooth UX.
+His portfolio: https://apandey-9044.github.io/arpit.portfolio_project/
+`;
+
 // Speech Recognition
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 if (SpeechRecognition) {
     recognition = new SpeechRecognition();
-    recognition.continuous = false;
+    recognition.continuous = true;
     recognition.interimResults = true;
     recognition.lang = "en-US";
 } else {
@@ -34,14 +55,14 @@ if (SpeechRecognition) {
     micButton.style.opacity = 0.5;
 }
 
-// On Load
-window.addEventListener("DOMContentLoaded", () => {
+// Load AI Model on Load
+window.addEventListener("DOMContentLoaded", async () => {
     loadChatHistory();
     userInput.focus();
 
-    // ✅ Force voice on first message — so it speaks from start
+    // Show welcome message
     if (chatArea.children.length === 0) {
-        addMessage("🔒 Please enter your password to proceed, Sir", "ghost", true);
+        addMessage("Please enter your password to proceed, Sir", "ghost", true);
     }
 
     // Register Service Worker
@@ -49,6 +70,15 @@ window.addEventListener("DOMContentLoaded", () => {
         navigator.serviceWorker.register("service-worker.js")
             .then(reg => console.log("SW registered:", reg.scope))
             .catch(err => console.error("SW registration failed:", err));
+    }
+
+    // ✅ Load AI Model in Background
+    try {
+        const { pipeline } = await import('@xenova/transformers');
+        aiModel = await pipeline('text-generation', 'Xenova/Qwen-1.8B-Chat');
+        console.log("✅ AI Model (Qwen) loaded successfully");
+    } catch (err) {
+        console.warn("⚠️ AI Model failed to load. Using fallback replies.", err);
     }
 });
 
@@ -74,12 +104,12 @@ function sendMessage() {
     if (!isChatUnlocked) {
         if (message === START_CHAT_PASSWORD) {
             isChatUnlocked = true;
-            addMessage("✅ Access granted! Welcome back, Sir.", "ghost", isVoiceResponseEnabled);
+            addMessage("Access granted! Welcome back, Sir.", "ghost", isVoiceResponseEnabled);
             userInput.value = "";
             saveChatHistory();
             return;
         } else {
-            addMessage("❌ Access denied. Please Use Your Access Key Sir", "ghost", isVoiceResponseEnabled);
+            addMessage("Access denied. Please Use Your Access Key Sir", "ghost", isVoiceResponseEnabled);
             userInput.value = "";
             return;
         }
@@ -88,13 +118,13 @@ function sendMessage() {
     // Clear chat password
     if (message === CLEAR_CHAT_PASSWORD) {
         clearChatHistory();
-        addMessage("🧹 Chat cleared successfully.", "ghost", isVoiceResponseEnabled);
+        addMessage("Chat cleared successfully.", "ghost", isVoiceResponseEnabled);
         userInput.value = "";
         return;
     }
 
     if (message.toLowerCase().includes("clear chat")) {
-        addMessage("⚠️ Enter Your Password To Clear Chat:", "ghost", isVoiceResponseEnabled);
+        addMessage("Enter Your Password To Clear Chat:", "ghost", isVoiceResponseEnabled);
         userInput.value = "";
         return;
     }
@@ -109,14 +139,14 @@ function sendMessage() {
     saveChatHistory();
 
     showTypingIndicator();
-    setTimeout(() => {
+    setTimeout(async () => {
         hideTypingIndicator();
-        const reply = getReply(message);
+        const reply = await getReply(message);
         if (reply && reply.trim()) {
             addMessage(reply, "ghost", isVoiceResponseEnabled);
         }
         saveChatHistory();
-    }, 1000 + Math.random() * 500);
+    }, 500);
 }
 
 // Add Message with Typing + Voice Sync
@@ -168,7 +198,9 @@ function typeTextWithVoice(element, text, shouldSpeak) {
     }, 20);
 
     if (shouldSpeak) {
-        const utterance = new SpeechSynthesisUtterance(text);
+        // Remove symbols before speaking
+        const cleanText = text.replace(/[✅❌🔒⚠️🧹🎉🟢🔴🎤🔊🔇🌐]/g, '');
+        const utterance = new SpeechSynthesisUtterance(cleanText);
         utterance.rate = 0.9;
         utterance.pitch = 1.1;
 
@@ -209,46 +241,19 @@ function shouldShowInstallPrompt(message) {
     return triggers.some(keyword => lower.includes(keyword));
 }
 
-// Get Reply
-function getReply(message) {
+// Get Reply from AI or Fallback
+async function getReply(message) {
     const lower = message.toLowerCase().replace(/[^\w\s]/g, "");
 
-    // --- Owner Info: Arpit Pandey ---
-    if (matches(lower, ["owner", "creator", "developer", "who made you", "who created you", "kaun hai", "tumhara malik", "banaya kisne"])) {
-        return "I was created by Mr. Arpit Pandey — a passionate Full Stack Developer.";
-    }
-
-    if (matches(lower, ["name", "full name", "owner name", "arpit", "pandey", "kon hai"])) {
-        return "My creator's name is Arpit Pandey.";
-    }
-
-    if (matches(lower, ["age", "how old", "kitni umar", "umar", "kita saal"])) {
-        return "Arpit Pandey is 20 years old.";
-    }
-
-    if (matches(lower, ["profession", "job", "work", "career", "kya karta hai", "profile"])) {
-        return "He is a Full Stack Developer passionate about building sleek, modern web apps with smooth UX.";
-    }
-
-    if (matches(lower, ["education", "padhai", "qualifications", "degree", "bcA", "kaha padha"])) {
-        return "He has completed his BCA (Bachelor of Computer Applications).";
-    }
-
-    if (matches(lower, ["skills", "technologies", "kya aata hai", "expertise", "tools"])) {
-        return "His skills include HTML, CSS, JavaScript, and Python. He's also learning ES6+, DOM manipulation, and modern web frameworks.";
-    }
-
-    if (matches(lower, ["projects", "kya banaya hai", "portfolio me kya hai", "work"])) {
-        return "His projects include: Task Manager App, Stone Paper Scissors Game, E-Commerce Website, Quiz App, Professional Dashboard, and Expense Manager.";
-    }
-
-    if (matches(lower, ["website", "portfolio", "link", "url", "site", "github"])) {
-        return "You can view his portfolio here: https://apandey-9046.github.io/arpit.portfolio_project/";
-    }
-
-    if (matches(lower, ["open website", "show portfolio", "visit site", "launch", "go to portfolio"])) {
-        window.open("https://apandey-9046.github.io/arpit.portfolio_project/", "_blank");
-        return "Opening Arpit Pandey's portfolio in a new tab... 🌐";
+    // --- Wake Word Detection for Mic ---
+    const wakeWords = ["wake up", "hey", "are you there", "hello", "ghost"];
+    if (wakeWords.some(word => lower.includes(word)) && !isListening) {
+        isListening = true;
+        recognition.start();
+        micButton.innerHTML = "🟢";
+        micButton.style.backgroundColor = "#00cc44";
+        micButton.title = "Active";
+        return "Yes Sir, I'm here. How can I help you?";
     }
 
     // --- Install Prompt ---
@@ -260,7 +265,7 @@ function getReply(message) {
                 deferredPrompt.prompt();
                 deferredPrompt.userChoice.then(result => {
                     if (result.outcome === 'accepted') {
-                        addMessage("🎉 Installation started! Check your device.", "ghost", isVoiceResponseEnabled);
+                        addMessage("Installation started! Check your device.", "ghost", isVoiceResponseEnabled);
                     } else {
                         addMessage("Installation canceled. You can try again later.", "ghost", isVoiceResponseEnabled);
                     }
@@ -269,20 +274,39 @@ function getReply(message) {
                 });
             };
         }
-        return "Yes! Click the 'Install App' button below to install me on your device. 📲";
+        return "Yes! Click the 'Install App' button below to install me on your device.";
     }
 
-    // --- Existing Logic ---
+    // --- Name Queries ---
+    if (matches(lower, ["my name", "mera naam", "kon hu"])) {
+        return `Your name is ${USER_NAME}, Sir.`;
+    }
+
+    if (matches(lower, ["your name", "tumhara naam", "kaun ho"])) {
+        return `I'm ${AI_NAME}, your personal AI assistant.`;
+    }
+
+    // --- Age Queries ---
+    if (matches(lower, ["my age", "meri umar", "main kitne saal ka hu"])) {
+        return "You are 20 years old, Sir.";
+    }
+
+    if (matches(lower, ["your age", "tumhari umar", "kitne din se ho"])) {
+        const today = new Date();
+        const diffTime = Math.abs(today - AI_BIRTH_DATE);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        const years = Math.floor(diffDays / 365);
+        const remainderDays = diffDays % 365;
+        return `I am ${years} years and ${remainderDays} days old today.`;
+    }
+
+    // --- Existing Logic (Priority Replies) ---
     if (matches(lower, ["hi", "hello", "hey", "hlo", "good morning", "good afternoon", "good evening", "sup"])) {
         return "Hello Sir! How can I assist you today?";
     }
 
     if (matches(lower, ["how are you", "how are you doing", "how is it going", "whats up", "what's up", "how are things"])) {
         return "I'm functioning optimally, thank you! How is your day going?";
-    }
-
-    if (matches(lower, ["your name", "who are you", "what are you", "what is your name", "identify yourself"])) {
-        return "I'm Ghost — your personal AI assistant.";
     }
 
     if (matches(lower, ["time", "current time", "what time is it", "clock", "tell me the time"])) {
@@ -302,9 +326,26 @@ function getReply(message) {
     }
 
     if (matches(lower, ["i love you", "love you", "you're awesome", "best ai", "you are amazing", "impressive"])) {
-        return "Aww, that's sweet! I'm here for you, always — professionally, of course. 😉";
+        return "Aww, that's sweet! I'm here for you, always — professionally, of course.";
     }
 
+    // --- Default: Use AI to generate reply ---
+    if (aiModel) {
+        try {
+            const prompt = `
+${PROFILE_CONTEXT}
+You are Ghost, Arpit Pandey's personal AI assistant.
+Be helpful, concise, and professional.
+Answer this: "${message}"
+`;
+            const result = await aiModel(prompt, { max_new_tokens: 150 });
+            return result[0].generated_text.replace(/[\n\r]+/g, ' ').trim();
+        } catch (err) {
+            console.error("AI generation failed:", err);
+        }
+    }
+
+    // Fallback if AI fails
     const fallbacks = [
         "I'm not sure about that, but I'm learning every day!",
         "Hmm, I don't have an answer yet, but I'm improving!",
@@ -319,7 +360,7 @@ function matches(text, keywords) {
     return keywords.some(keyword => text.includes(keyword.trim()));
 }
 
-// ✅ Mic Button: Blinking Green Dot + Auto-Send
+// ✅ Mic Button: Sleep Mode + Wake Words
 micButton.addEventListener("click", () => {
     if (!recognition) return;
 
@@ -330,18 +371,9 @@ micButton.addEventListener("click", () => {
         try {
             recognition.start();
             isListening = true;
-            micButton.innerHTML = "🔴";
-            micButton.style.backgroundColor = "#cc0000";
-            micButton.title = "Listening...";
-
-            // Blinking green dot effect
-            const blink = setInterval(() => {
-                if (!isListening) {
-                    clearInterval(blink);
-                    return;
-                }
-                micButton.innerHTML = micButton.innerHTML === "🔴" ? "🟢" : "🔴";
-            }, 800);
+            micButton.innerHTML = "🟢";
+            micButton.style.backgroundColor = "#00cc44";
+            micButton.title = "Active";
         } catch (e) {
             console.error("Speech error:", e);
             resetMicButton();
@@ -349,43 +381,42 @@ micButton.addEventListener("click", () => {
     }
 });
 
-// Reset mic button to default
+// Reset mic button to sleep mode
 function resetMicButton() {
     isListening = false;
-    micButton.innerHTML = "🎤";
-    micButton.style.backgroundColor = "";
-    micButton.title = "Hold to speak";
+    micButton.innerHTML = "⚪";
+    micButton.style.backgroundColor = "#666";
+    micButton.title = "Listening for wake word...";
     clearTimeout(silenceTimer);
 }
 
 // Handle recognition events
 if (recognition) {
     recognition.onresult = (e) => {
-        const transcript = e.results[0][0].transcript.trim();
+        const transcript = e.results[0][0].transcript.trim().toLowerCase();
         if (!isListening) return;
 
-        userInput.value = transcript;
-
-        // Reset silence timer
-        clearTimeout(silenceTimer);
-
         if (e.results[0].isFinal) {
-            // Auto-send after 4 seconds of silence
-            silenceTimer = setTimeout(() => {
-                if (isListening && userInput.value.trim()) {
-                    sendMessage();
-                }
-            }, 4000);
+            const wakeWords = ["wake up", "hey", "are you there", "hello", "ghost"];
+            if (wakeWords.some(word => transcript.includes(word))) {
+                addMessage("Yes Sir, I'm here. How can I help you?", "ghost", isVoiceResponseEnabled);
+                userInput.value = "";
+            }
         }
     };
 
     recognition.onerror = (e) => {
-        console.error("Speech error:", e.error);
+        if (e.error !== 'aborted') {
+            console.error("Speech error:", e.error);
+        }
     };
 
     recognition.onend = () => {
-        if (isListening) {
-            resetMicButton();
+        if (!isListening) {
+            recognition.start();
+            micButton.innerHTML = "⚪";
+            micButton.style.backgroundColor = "#666";
+            micButton.title = "Listening for wake word...";
         }
     };
 }

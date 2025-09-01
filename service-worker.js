@@ -1,6 +1,6 @@
 // service-worker.js
 
-const CACHE_NAME = "ghost-ai-v2"; // Update version to force refreshing the cache.
+const CACHE_NAME = "ghost-ai-v2.1.12"; // Update version to force refreshing the cache.
 
 const urlsToCache = [
     "./",
