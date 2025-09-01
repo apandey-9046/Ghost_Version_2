@@ -213,6 +213,45 @@ function shouldShowInstallPrompt(message) {
 function getReply(message) {
     const lower = message.toLowerCase().replace(/[^\w\s]/g, "");
 
+    // --- Owner Info: Arpit Pandey ---
+    if (matches(lower, ["owner", "creator", "developer", "who made you", "who created you", "kaun hai", "tumhara malik", "banaya kisne"])) {
+        return "I was created by Mr. Arpit Pandey — a passionate Full Stack Developer.";
+    }
+
+    if (matches(lower, ["name", "full name", "owner name", "arpit", "pandey", "kon hai"])) {
+        return "My creator's name is Arpit Pandey.";
+    }
+
+    if (matches(lower, ["age", "how old", "kitni umar", "umar", "kita saal"])) {
+        return "Arpit Pandey is 20 years old.";
+    }
+
+    if (matches(lower, ["profession", "job", "work", "career", "kya karta hai", "profile"])) {
+        return "He is a Full Stack Developer passionate about building sleek, modern web apps with smooth UX.";
+    }
+
+    if (matches(lower, ["education", "padhai", "qualifications", "degree", "bcA", "kaha padha"])) {
+        return "He has completed his BCA (Bachelor of Computer Applications).";
+    }
+
+    if (matches(lower, ["skills", "technologies", "kya aata hai", "expertise", "tools"])) {
+        return "His skills include HTML, CSS, JavaScript, and Python. He's also learning ES6+, DOM manipulation, and modern web frameworks.";
+    }
+
+    if (matches(lower, ["projects", "kya banaya hai", "portfolio me kya hai", "work"])) {
+        return "His projects include: Task Manager App, Stone Paper Scissors Game, E-Commerce Website, Quiz App, Professional Dashboard, and Expense Manager.";
+    }
+
+    if (matches(lower, ["website", "portfolio", "link", "url", "site", "github"])) {
+        return "You can view his portfolio here: https://apandey-9046.github.io/arpit.portfolio_project/";
+    }
+
+    if (matches(lower, ["open website", "show portfolio", "visit site", "launch", "go to portfolio"])) {
+        window.open("https://apandey-9046.github.io/arpit.portfolio_project/", "_blank");
+        return "Opening Arpit Pandey's portfolio in a new tab... 🌐";
+    }
+
+    // --- Install Prompt ---
     if (shouldShowInstallPrompt(message)) {
         if (deferredPrompt) {
             installButton.hidden = false;
@@ -233,7 +272,7 @@ function getReply(message) {
         return "Yes! Click the 'Install App' button below to install me on your device. 📲";
     }
 
-    // --- Your existing logic ---
+    // --- Existing Logic ---
     if (matches(lower, ["hi", "hello", "hey", "hlo", "good morning", "good afternoon", "good evening", "sup"])) {
         return "Hello Sir! How can I assist you today?";
     }
@@ -242,7 +281,7 @@ function getReply(message) {
         return "I'm functioning optimally, thank you! How is your day going?";
     }
 
-    if (matches(lower, ["name", "your name", "who are you", "what are you", "what is your name", "identify yourself"])) {
+    if (matches(lower, ["your name", "who are you", "what are you", "what is your name", "identify yourself"])) {
         return "I'm Ghost — your personal AI assistant.";
     }
 
@@ -260,10 +299,6 @@ function getReply(message) {
 
     if (matches(lower, ["help", "need help", "can you help", "what can you do", "features", "capabilities"])) {
         return "I can chat, tell time, respond to voice input, and more. Just ask me anything!";
-    }
-
-    if (matches(lower, ["who made you", "who created you", "developer", "creator", "who built you"])) {
-        return "I was created by you, Sir! You're my developer and my guide.";
     }
 
     if (matches(lower, ["i love you", "love you", "you're awesome", "best ai", "you are amazing", "impressive"])) {
