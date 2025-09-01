@@ -27,19 +27,27 @@ const USER_NAME = "Arpit";
 const AI_NAME = "Ghost";
 const AI_BIRTH_DATE = new Date("2025-09-01"); // Ghost's "birth" date
 
-// Arpit's Profile Context (for AI)
+// Arpit's Profile Context (Updated from portfolio)
 const PROFILE_CONTEXT = `
 Arpit Pandey is a 20-year-old Full Stack Developer who has completed his BCA.
-He is skilled in HTML, CSS, JavaScript, and Python.
-His projects include:
-- Task Manager App
-- Stone Paper Scissors Game
-- E-Commerce Website
-- Quiz App
-- Professional Dashboard
-- Expense Manager
 He is passionate about building sleek, modern web apps with smooth UX.
-His portfolio: https://apandey-9044.github.io/arpit.portfolio_project/
+He specializes in HTML, CSS, JavaScript, and Python.
+His key skills:
+- HTML: Creating structured, semantic web pages with responsive layouts.
+- CSS: Styling modern websites, animations, and responsive designs.
+- JavaScript: Learning DOM manipulation, ES6+, and interactive features.
+- Python: Proficient in scripting, automation, and problem-solving.
+
+His projects include:
+1. Task Manager App — Efficiently manage daily tasks.
+2. Stone Paper Scissors Game — Interactive game showcasing creativity.
+3. E-Commerce Website — Full-featured online shopping platform.
+4. Quiz App — Interactive quiz with timer and scoring.
+5. Professional Dashboard — Visualize business metrics.
+6. Expense Manager — Track income, expenses, and spending trends.
+
+He is always learning new technologies and exploring trends.
+You can view his portfolio: https://apandey-9046.github.io/arpit.portfolio_project/
 `;
 
 // Speech Recognition
@@ -246,14 +254,22 @@ async function getReply(message) {
     const lower = message.toLowerCase().replace(/[^\w\s]/g, "");
 
     // --- Wake Word Detection for Mic ---
-    const wakeWords = ["wake up", "hey", "are you there", "hello", "ghost"];
+    const wakeWords = [
+        "wake up", "hey", "are you there", "hello", "ghost",
+        "bhai sun", "suno", "ji", "haan", "kya hal hai",
+        "status", "online ho", "jaroorat hai", "jarurat hai"
+    ];
     if (wakeWords.some(word => lower.includes(word)) && !isListening) {
         isListening = true;
-        recognition.start();
-        micButton.innerHTML = "🟢";
-        micButton.style.backgroundColor = "#00cc44";
-        micButton.title = "Active";
-        return "Yes Sir, I'm here. How can I help you?";
+        recognition.stop();
+        setTimeout(() => {
+            recognition.start();
+            addMessage("Yes Sir, I'm here. How can I help you?", "ghost", isVoiceResponseEnabled);
+            micButton.innerHTML = "🟢";
+            micButton.style.backgroundColor = "#00cc44";
+            micButton.title = "Active";
+        }, 100);
+        return null; // Prevent duplicate message
     }
 
     // --- Install Prompt ---
@@ -369,6 +385,7 @@ micButton.addEventListener("click", () => {
         resetMicButton();
     } else {
         try {
+            recognition.stop(); // Clean restart
             recognition.start();
             isListening = true;
             micButton.innerHTML = "🟢";
@@ -388,35 +405,54 @@ function resetMicButton() {
     micButton.style.backgroundColor = "#666";
     micButton.title = "Listening for wake word...";
     clearTimeout(silenceTimer);
+
+    // Restart recognition in background
+    if (recognition && !isListening) {
+        recognition.stop();
+        setTimeout(() => recognition.start(), 500);
+    }
 }
 
 // Handle recognition events
 if (recognition) {
     recognition.onresult = (e) => {
         const transcript = e.results[0][0].transcript.trim().toLowerCase();
-        if (!isListening) return;
+        if (isListening) return; // Already active
 
         if (e.results[0].isFinal) {
-            const wakeWords = ["wake up", "hey", "are you there", "hello", "ghost"];
-            if (wakeWords.some(word => transcript.includes(word))) {
-                addMessage("Yes Sir, I'm here. How can I help you?", "ghost", isVoiceResponseEnabled);
-                userInput.value = "";
+            const matched = wakeWords.some(word => transcript.includes(word));
+            if (matched) {
+                isListening = true;
+                recognition.stop();
+                setTimeout(() => {
+                    recognition.start();
+                    addMessage("Yes Sir, I'm here. How can I help you?", "ghost", isVoiceResponseEnabled);
+                    micButton.innerHTML = "🟢";
+                    micButton.style.backgroundColor = "#00cc44";
+                    micButton.title = "Active";
+                }, 100);
             }
         }
     };
 
     recognition.onerror = (e) => {
-        if (e.error !== 'aborted') {
+        if (e.error !== 'no-speech' && e.error !== 'aborted') {
             console.error("Speech error:", e.error);
+        }
+        // Restart in sleep mode
+        if (!isListening) {
+            setTimeout(() => recognition.start(), 1000);
         }
     };
 
     recognition.onend = () => {
         if (!isListening) {
-            recognition.start();
-            micButton.innerHTML = "⚪";
-            micButton.style.backgroundColor = "#666";
-            micButton.title = "Listening for wake word...";
+            setTimeout(() => {
+                recognition.start();
+                micButton.innerHTML = "⚪";
+                micButton.style.backgroundColor = "#666";
+                micButton.title = "Listening for wake word...";
+            }, 500);
         }
     };
 }
