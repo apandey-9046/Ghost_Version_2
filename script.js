@@ -39,9 +39,9 @@ window.addEventListener("DOMContentLoaded", () => {
     loadChatHistory();
     userInput.focus();
 
-    // ✅ Clean message — no password hint
+    // ✅ Force voice on first message — so it speaks from start
     if (chatArea.children.length === 0) {
-        addMessage("🔒 Please enter your password to proceed, Sir", "ghost", isVoiceResponseEnabled);
+        addMessage("🔒 Please enter your password to proceed, Sir", "ghost", true);
     }
 
     // Register Service Worker
@@ -79,7 +79,7 @@ function sendMessage() {
             saveChatHistory();
             return;
         } else {
-            addMessage("❌ Access denied.", "ghost", isVoiceResponseEnabled);
+            addMessage("❌ Access denied. Please Use Your Access Key Sir", "ghost", isVoiceResponseEnabled);
             userInput.value = "";
             return;
         }
@@ -94,7 +94,7 @@ function sendMessage() {
     }
 
     if (message.toLowerCase().includes("clear chat")) {
-        addMessage("🔐 Enter your password to clear chat, Sir", "ghost", isVoiceResponseEnabled);
+        addMessage("⚠️ Enter Your Password To Clear Chat:", "ghost", isVoiceResponseEnabled);
         userInput.value = "";
         return;
     }
@@ -107,11 +107,6 @@ function sendMessage() {
     userInput.value = "";
     userTypingIndicator.style.display = "none";
     saveChatHistory();
-
-    // Hide install button if not relevant
-    if (!shouldShowInstallPrompt(message)) {
-        installButton.hidden = true;
-    }
 
     showTypingIndicator();
     setTimeout(() => {
@@ -219,25 +214,23 @@ function getReply(message) {
     const lower = message.toLowerCase().replace(/[^\w\s]/g, "");
 
     if (shouldShowInstallPrompt(message)) {
-        if (deferredPrompt && installButton.hidden) {
+        if (deferredPrompt) {
             installButton.hidden = false;
+
             installButton.onclick = () => {
                 deferredPrompt.prompt();
                 deferredPrompt.userChoice.then(result => {
                     if (result.outcome === 'accepted') {
-                        addMessage("🎉 Installation started! Check your device.", "ghost");
+                        addMessage("🎉 Installation started! Check your device.", "ghost", isVoiceResponseEnabled);
                     } else {
-                        addMessage("You declined the installation. You can try again later.", "ghost");
+                        addMessage("Installation canceled. You can try again later.", "ghost", isVoiceResponseEnabled);
                     }
                     installButton.hidden = true;
+                    installButton.onclick = null;
                 });
             };
         }
         return "Yes! Click the 'Install App' button below to install me on your device. 📲";
-    }
-
-    if (!lower.includes("install") && !lower.includes("download") && !lower.includes("home")) {
-        installButton.hidden = true;
     }
 
     // --- Your existing logic ---
