@@ -29,10 +29,8 @@ const AI_BIRTH_DATE = new Date("2025-09-01"); // Ghost's "birth" date
 
 // Arpit's Profile Context (Updated from portfolio)
 const PROFILE_CONTEXT = `
-Arpit Pandey is a 20-year-old Full Stack Developer who has completed his BCA.
-He is passionate about building sleek, modern web apps with smooth UX.
-He specializes in HTML, CSS, JavaScript, and Python.
-His key skills:
+Arpit Pandey is a 20-year-old Full Stack Developer passionate about building sleek, modern web apps with smooth UX.
+He has completed his BCA and specializes in:
 - HTML: Creating structured, semantic web pages with responsive layouts.
 - CSS: Styling modern websites, animations, and responsive designs.
 - JavaScript: Learning DOM manipulation, ES6+, and interactive features.
@@ -47,8 +45,21 @@ His projects include:
 6. Expense Manager — Track income, expenses, and spending trends.
 
 He is always learning new technologies and exploring trends.
-You can view his portfolio: https://apandey-9046.github.io/arpit.portfolio_project/
+Portfolio: https://apandey-9046.github.io/arpit.portfolio_project/
 `;
+
+// Expense & Task State
+let expenses = JSON.parse(localStorage.getItem("ghostExpenses")) || [];
+let tasks = JSON.parse(localStorage.getItem("ghostTasks")) || [];
+
+// Save functions
+function saveExpenses() {
+    localStorage.setItem("ghostExpenses", JSON.stringify(expenses));
+}
+
+function saveTasks() {
+    localStorage.setItem("ghostTasks", JSON.stringify(tasks));
+}
 
 // Speech Recognition
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -269,7 +280,7 @@ async function getReply(message) {
             micButton.style.backgroundColor = "#00cc44";
             micButton.title = "Active";
         }, 100);
-        return null; // Prevent duplicate message
+        return null;
     }
 
     // --- Install Prompt ---
@@ -314,6 +325,143 @@ async function getReply(message) {
         const years = Math.floor(diffDays / 365);
         const remainderDays = diffDays % 365;
         return `I am ${years} years and ${remainderDays} days old today.`;
+    }
+
+    // --- Task Manager ---
+    if (lower.includes("add task") || lower.includes("task")) {
+        const taskText = message.replace(/add task:?/i, "").trim();
+        if (taskText) {
+            const newTask = {
+                id: Date.now(),
+                text: taskText,
+                date: new Date().toLocaleDateString()
+            };
+            tasks.push(newTask);
+            saveTasks();
+            return `✅ Task added: "${taskText}"`;
+        }
+        return "Please specify a task. Example: 'Add task: Fix bug by tomorrow'";
+    }
+
+    if (lower.includes("show tasks") || lower.includes("my tasks")) {
+        if (tasks.length === 0) {
+            return "You have no tasks. Add one with 'Add task: ...'";
+        }
+
+        let taskList = "📝 Your Tasks:\n";
+        tasks.forEach((t, i) => {
+            taskList += `${i + 1}. ${t.text} (Added: ${t.date})\n`;
+        });
+        return taskList;
+    }
+
+    if (lower.includes("clear tasks")) {
+        tasks = [];
+        saveTasks();
+        return "🧹 All tasks cleared.";
+    }
+
+    // --- Expense Manager ---
+    if (lower.includes("add expense") || lower.includes("expense")) {
+        const match = message.match(/₹?(\d+)/);
+        const amount = match ? parseInt(match[1]) : 0;
+        if (amount > 0) {
+            const words = lower.split(" ");
+            const category = words[words.indexOf("expense") + 1] || "General";
+            const item = message.split("-")[0].replace(/add expense|expense/i, "").trim() || category;
+
+            const newExpense = {
+                id: Date.now(),
+                item,
+                category,
+                amount,
+                date: new Date().toLocaleDateString(),
+                status: "Paid"
+            };
+
+            expenses.push(newExpense);
+            saveExpenses();
+
+            return `✅ Expense added: ${item} - ₹${amount}`;
+        }
+        return "Please specify the amount. Example: 'Add expense: Food - ₹200'";
+    }
+
+    if (lower.includes("show expenses") || lower.includes("my expenses")) {
+        if (expenses.length === 0) {
+            return "You have no expenses recorded yet.";
+        }
+
+        let total = expenses.reduce((sum, e) => sum + e.amount, 0);
+        let bill = `----------------------------------\n`;
+        bill += `        💳 EXPENSE BILL\n`;
+        bill += `----------------------------------\n`;
+        expenses.forEach(e => {
+            bill += `  • ${e.item.padEnd(20)} ₹${e.amount}\n`;
+        });
+        bill += `----------------------------------\n`;
+        bill += `Total:     ₹${total}\n`;
+        bill += `Status:    ✅ Paid\n`;
+        bill += `----------------------------------`;
+
+        return bill;
+    }
+
+    if (lower.includes("clear expenses")) {
+        expenses = [];
+        saveExpenses();
+        return "🧹 All expenses cleared.";
+    }
+
+    // --- Game: Stone Paper Scissors ---
+    if (lower.includes("play game") || lower.includes("stone paper scissors")) {
+        return `Let's play! Choose Stone, Paper, or Scissors. I've chosen mine.`;
+    }
+
+    if (["stone", "paper", "scissors"].some(word => lower.includes(word))) {
+        const userChoice = lower.includes("stone") ? "Stone" :
+            lower.includes("paper") ? "Paper" : "Scissors";
+
+        const options = ["Stone", "Paper", "Scissors"];
+        const aiChoice = options[Math.floor(Math.random() * 3)];
+
+        let result = `You: ${userChoice} vs Me: ${aiChoice}\n`;
+
+        if (userChoice === aiChoice) {
+            result += "It's a tie! 🤝";
+        } else if (
+            (userChoice === "Stone" && aiChoice === "Scissors") ||
+            (userChoice === "Paper" && aiChoice === "Stone") ||
+            (userChoice === "Scissors" && aiChoice === "Paper")
+        ) {
+            result += "You win! 🎉";
+        } else {
+            result += "I win! 😎";
+        }
+
+        return result;
+    }
+
+    // --- Maths Solver ---
+    if (lower.includes("solve") || /[+\-*/=]/.test(lower)) {
+        try {
+            const expression = message.replace(/[^0-9+\-*/().]/g, '');
+            const result = eval(expression);
+            return `🧮 Result: ${expression} = ${result}`;
+        } catch (e) {
+            return "I couldn't solve that. Please enter a valid math expression.";
+        }
+    }
+
+    // --- Quiz ---
+    if (lower.includes("quiz") || lower.includes("question")) {
+        return `🧠 JavaScript Quiz (5 Questions):\n\n` +
+            "1. What does 'JS' stand for?\n" +
+            "2. How do you declare a variable in ES6?\n" +
+            "3. What is the output of 'typeof null'?\n" +
+            "4. Which method adds an element to the end of an array?\n" +
+            "5. What does 'DOM' stand for?\n\n" +
+            "Reply with your answers, and I'll score you!";
     }
 
     // --- Existing Logic (Priority Replies) ---
