@@ -1,0 +1,11 @@
+project/
+├── index.html
+├── style.css
+├── script.js
+├── favicon.png
+├── ghost!.jpg
+├── manifest.json
+├── service-worker.js
+└── icons/
+    ├── icon-192.png
+    └── icon-512.png

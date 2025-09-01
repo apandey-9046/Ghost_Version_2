@@ -1,0 +1,22 @@
+{
+  "name": "Ghost - Your AI Assistant",
+  "short_name": "Ghost",
+  "description": "A smart, talking AI assistant with voice and chat.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#00a884",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "favicon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "favicon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

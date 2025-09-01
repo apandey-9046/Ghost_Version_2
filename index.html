@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Ghost - Your Personal AI Assistant</title>
+
+    <!-- Favicon & PWA -->
+    <link rel="icon" href="favicon.png" type="image/png" />
+    <link rel="apple-touch-icon" href="favicon.png" />
+    <link rel="manifest" href="manifest.json" />
+    <meta name="theme-color" content="#00a884" />
+    <meta name="description" content="Ghost - A talking AI assistant with voice, PWA, and password protection." />
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="style.css" />
+
+    <!-- Install Prompt Script -->
+    <script>
+        function promptInstall() {
+            if (window.deferredPrompt) {
+                window.deferredPrompt.prompt();
+                window.deferredPrompt.userChoice.then(() => {
+                    window.deferredPrompt = null;
+                });
+            }
+        }
+    </script>
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <div class="app-header">
+            <div class="header-left">
+                <div class="header-title">
+                    <div class="user-name">GHOST</div>
+                    <div class="user-status">
+                        <span class="online-dot"></span>
+                        <span>Online</span>
+                    </div>
+                </div>
+            </div>
+            <div class="header-right">
+                <img src="ghost!.jpg" alt="Ghost" class="avatar" />
+            </div>
+        </div>
+
+        <!-- Chat Area -->
+        <div class="chat-container" id="chatArea">
+            <!-- Messages will be added here dynamically -->
+        </div>
+
+        <!-- Typing Indicator (Ghost) -->
+        <div class="typing-indicator" id="typingIndicator">
+            <div class="typing-dots">
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+            </div>
+        </div>
+
+        <!-- User Typing Indicator -->
+        <div class="typing-indicator user-typing-indicator" id="userTypingIndicator" style="display: none;">
+            <div>You are typing...</div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="input-container">
+            <input type="text" class="input-field" id="userInput" placeholder="Type a message..." />
+            <div class="input-buttons">
+                <button class="action-button" id="voiceButton" title="Toggle voice">🔊</button>
+                <button class="action-button" id="micButton" title="Hold to speak">🎤</button>
+                <button class="send-button" id="sendButton">Send</button>
+            </div>
+        </div>
+
+        <!-- Install Button (PWA) - Hidden by default -->
+        <button id="installButton" hidden class="install-button" onclick="promptInstall()">
+            Install Ghost App 📲
+        </button>
+    </div>
+
+    <!-- Scripts -->
+    <script src="script.js"></script>
+</body>
+
+</html>
