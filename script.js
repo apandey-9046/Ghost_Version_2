@@ -7,62 +7,49 @@ const voiceButton = document.getElementById("voiceButton");
 const typingIndicator = document.getElementById("typingIndicator");
 const userTypingIndicator = document.getElementById("userTypingIndicator");
 const installButton = document.getElementById("installButton");
-// ✅ Global wake words
-const WAKE_WORDS = [
-    "wake up", "hey", "are you there", "hello", "ghost",
-    "bhai sun", "suno", "ji", "haan", "kya hal hai",
-    "status", "online ho", "jaroorat hai", "jarurat hai"
-];
+
 // State
-let isListening = false; // This now means actively listening for dictation, not just wake words
+let isListening = false; // Now means actively listening for dictation
 let isVoiceResponseEnabled = false;
 let recognition = null;
 let currentUtterance = null;
 let isChatUnlocked = false;
 let deferredPrompt = null;
 let aiModel = null;
+
 // Set app height for mobile devices
 function setAppHeight() {
     document.documentElement.style.setProperty('--app-height', `${window.innerHeight}px`);
 }
 window.addEventListener('resize', setAppHeight);
 setAppHeight();
+
 // Passwords
 const START_CHAT_PASSWORD = "Admin123";
 const CLEAR_CHAT_PASSWORD = "Arpit@232422";
+
 // User & AI Info
-const USER_NAME = "Arpit";
+const USER_NAME = "User"; // Generic placeholder
 const AI_NAME = "Ghost";
 const AI_BIRTH_DATE = new Date("2025-09-01");
+
 // Version Info
 const APP_VERSION = "Ghost v3.0.0";
+
 // Auto Update Date
 const LAST_UPDATED = new Date().toLocaleDateString("en-IN", {
     day: "numeric",
     month: "long",
     year: "numeric"
 });
-// Arpit's Profile Context (Updated from live portfolio)
-const PROFILE_CONTEXT = `
-Arpit Pandey is a 20-year-old Full Stack Developer passionate about building sleek, modern web apps with smooth UX.
-He has completed his BCA and specializes in:
-- HTML: Creating structured, semantic web pages with responsive layouts.
-- CSS: Styling modern websites, animations, and responsive designs.
-- JavaScript: Learning DOM manipulation, ES6+, and interactive features.
-- Python: Proficient in scripting, automation, and problem-solving.
-His projects include:
-1. Task Manager App — Efficiently manage daily tasks.
-2. Stone Paper Scissors Game — Interactive game showcasing creativity.
-3. E-Commerce Website — Full-featured online shopping platform.
-4. Quiz App — Interactive quiz with timer and scoring.
-5. Professional Dashboard — Visualize business metrics.
-6. Expense Manager — Track income, expenses, and spending trends.
-He is always learning new technologies and exploring trends.
-Portfolio: https://apandey-9046.github.io/arpit.portfolio_project/ 
-`;
+
+// Profile Context (Generic/Empty as requested)
+const PROFILE_CONTEXT = ``; // Removed Arpit-specific data
+
 // Expense & Task State
 let expenses = JSON.parse(localStorage.getItem("ghostExpenses")) || [];
 let tasks = JSON.parse(localStorage.getItem("ghostTasks")) || [];
+
 // Save functions
 function saveExpenses() {
     try {
@@ -79,8 +66,7 @@ function saveTasks() {
     }
 }
 
-// Generate ID safely
-// ✅ Fix 2: Updated fallback to use substring instead of deprecated substr
+// Generate ID safely (Fix 2: Improved fallback and error handling)
 function generateId() {
     try {
         // Ensure crypto is available and randomUUID is callable
@@ -92,7 +78,7 @@ function generateId() {
     } catch (e) {
         console.warn("crypto.randomUUID failed, using fallback:", e);
         // Fallback: timestamp + random number part
-        return `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`; // ✅ substr -> substring
+        return `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`; // Fix substr
     }
 }
 
@@ -100,36 +86,40 @@ function generateId() {
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 if (SpeechRecognition) {
     recognition = new SpeechRecognition();
-    recognition.continuous = true;
-    recognition.interimResults = true;
+    recognition.continuous = true; // Keep listening
+    recognition.interimResults = true; // Get live results
     recognition.lang = "en-US";
 } else {
     micButton.disabled = true;
     micButton.title = "Not supported";
     micButton.style.opacity = 0.5;
 }
+
 // Load AI Model (Safe Pipeline)
 window.addEventListener("DOMContentLoaded", async () => {
     loadChatHistory();
     userInput.focus();
+
     // Restore voice toggle
     isVoiceResponseEnabled = localStorage.getItem("voiceEnabled") === "true";
     voiceButton.textContent = isVoiceResponseEnabled ? "🔊" : "🔇";
+
     // Show welcome message
     if (chatArea.children.length === 0) {
-        addMessage("Welcome back, Sir! Please enter your password to proceed.", "ghost", isVoiceResponseEnabled);
+        addMessage("Welcome back! Please enter your password to proceed.", "ghost", isVoiceResponseEnabled);
     }
+
     // Register Service Worker
     if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("/service-worker.js")
             .then(reg => console.log("SW registered:", reg.scope))
             .catch(err => console.error("SW registration failed:", err));
     }
-    // ✅ Fix 1: Corrected import URL (removed trailing spaces)
+
     try {
-        // ✅ Fix 3: Corrected pipeline usage to 'text-generation'
-        const { pipeline } = await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.5.0/dist/transformers.esm.js'); // Removed trailing spaces
-        // Using a lightweight generative model. Adjust if needed.
+        // Fix 1: Corrected import URL (removed trailing spaces)
+        const { pipeline } = await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.5.0/dist/transformers.esm.js');
+        // Fix 3: Corrected pipeline usage to 'text-generation'
         aiModel = await pipeline('text-generation', 'Xenova/distilgpt2');
         console.log("✅ AI Text Generation Model loaded (lightweight)");
     } catch (err) {
@@ -138,19 +128,24 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
     checkMicPermission();
 });
+
 // Check Mic Permission
 async function checkMicPermission() {
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         console.log("✅ Mic permission granted");
         stream.getTracks().forEach(track => track.stop());
-        if (recognition && !isListening) {
-            recognition.stop();
+        if (recognition) {
+            // Start continuous recognition if permission granted
+            recognition.stop(); // Ensure stopped before starting
             setTimeout(() => {
                 try {
-                    recognition.start(); // ✅ Fix 6: Wrap start in try/catch
+                    recognition.start();
+                    console.log("🎤 Continuous speech recognition started.");
+                    updateMicButtonState(); // Update UI to reflect listening state
                 } catch (e) {
-                    console.error("Error restarting recognition after permission check:", e);
+                    console.error("Error starting continuous recognition:", e);
+                    updateMicButtonState(); // Update UI to reflect error state
                 }
             }, 500);
         }
@@ -159,8 +154,35 @@ async function checkMicPermission() {
         micButton.title = "Mic blocked. Allow in browser settings";
         micButton.style.backgroundColor = "#ff6b6b";
         micButton.innerHTML = "🔴";
+        isListening = false; // Explicitly set state
     }
 }
+
+// Update Mic Button UI based on state
+function updateMicButtonState() {
+    if (!recognition) {
+        micButton.disabled = true;
+        micButton.title = "Not supported";
+        micButton.style.opacity = 0.5;
+        return;
+    }
+
+    // Check actual state if available (not standard but useful)
+    const actualState = recognition.state || (isListening ? 'listening' : 'inactive');
+
+    if (actualState === 'listening' || isListening) {
+        micButton.innerHTML = "🟢";
+        micButton.style.backgroundColor = "#00cc44";
+        micButton.title = "Active - Listening";
+        isListening = true; // Sync state flag
+    } else {
+        micButton.innerHTML = "⚪";
+        micButton.style.backgroundColor = "#666";
+        micButton.title = "Start listening";
+        isListening = false; // Sync state flag
+    }
+}
+
 // User Typing Indicator
 userInput.addEventListener("input", () => {
     if (userInput.value.trim().length > 0) {
@@ -172,24 +194,27 @@ userInput.addEventListener("input", () => {
 userInput.addEventListener("blur", () => {
     userTypingIndicator.style.display = "none";
 });
+
 // Send Message
 function sendMessage() {
     const message = userInput.value.trim();
     if (!message) return;
+
     // Password check for unlock
     if (!isChatUnlocked) {
         if (message === START_CHAT_PASSWORD) {
             isChatUnlocked = true;
-            addMessage("Access granted! Welcome back, Sir.", "ghost", isVoiceResponseEnabled);
+            addMessage("Access granted! Welcome back.", "ghost", isVoiceResponseEnabled);
             userInput.value = "";
             saveChatHistory();
             return;
         } else {
-            addMessage("Access denied. Please Use Your Access Key Sir", "ghost", isVoiceResponseEnabled);
+            addMessage("Access denied. Please use your access key.", "ghost", isVoiceResponseEnabled);
             userInput.value = "";
             return;
         }
     }
+
     // Clear chat password
     if (message === CLEAR_CHAT_PASSWORD) {
         clearChatHistory();
@@ -198,20 +223,23 @@ function sendMessage() {
         return;
     }
     if (message.toLowerCase().includes("clear chat")) {
-        addMessage("Enter Your Password To Clear Chat:", "ghost", isVoiceResponseEnabled);
+        addMessage("Enter your password to clear the chat:", "ghost", isVoiceResponseEnabled);
         userInput.value = "";
         return;
     }
-    // ✅ Fix 1: Removed invalid recognition.state check
-    // ✅ Prevent self-voice from being sent as input (if actively listening for dictation)
-    if (isListening && recognition /* && recognition.state === 'listening' */) return;
+
+    // Prevent self-voice from being sent as input (if actively listening for dictation)
+    // Note: This check relies on isListening flag now.
+    if (isListening) return;
+
     // Normal message
     addMessage(message, "user");
     userInput.value = "";
-    userInput.blur(); // ✅ Close keyboard
+    userInput.blur(); // Close keyboard
     userTypingIndicator.style.display = "none";
     saveChatHistory();
     showTypingIndicator();
+
     setTimeout(async () => {
         try {
             const reply = await getReply(message);
@@ -227,39 +255,51 @@ function sendMessage() {
         }
     }, 500);
 }
+
 // Add Message with Typing + Voice Sync
 function addMessage(text, sender, shouldSpeak = false) {
     const trimmedText = text.trim();
     if (!trimmedText) return;
+
     const messageDiv = document.createElement("div");
     messageDiv.className = sender === "user" ? "message user-message" : "message ghost-message";
+
     const senderDiv = document.createElement("div");
     senderDiv.className = "message-sender";
     senderDiv.textContent = sender === "user" ? "You" : "Ghost";
+
     const bubbleDiv = document.createElement("div");
     bubbleDiv.className = "message-bubble";
     bubbleDiv.textContent = "";
+
     const timeDiv = document.createElement("div");
     timeDiv.className = "message-time";
     timeDiv.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
     messageDiv.appendChild(senderDiv);
     messageDiv.appendChild(bubbleDiv);
     messageDiv.appendChild(timeDiv);
+
     chatArea.appendChild(messageDiv);
+
     if (sender === "ghost") {
         typeTextWithVoice(bubbleDiv, trimmedText, shouldSpeak);
     } else {
         bubbleDiv.textContent = trimmedText;
     }
+
     chatArea.scrollTop = chatArea.scrollHeight;
 }
-// ✅ Type and Speak Together — Natural, Human-like Voice
+
+// Type and Speak Together — Natural, Human-like Voice
 function typeTextWithVoice(element, text, shouldSpeak) {
     let i = 0;
     element.textContent = "";
+
     // Clean text for speech (remove emojis/symbols)
-    // ✅ Fix 4: Updated emoji removal regex for better browser support
-    const cleanText = text.replace(/[\p{Extended_Pictographic}]/gu, ''); // ✅ \p{Emoji} -> [\p{Extended_Pictographic}]
+    // Fix 4: Updated emoji removal regex for better browser support
+    const cleanText = text.replace(/[\p{Extended_Pictographic}]/gu, '');
+
     const interval = setInterval(() => {
         if (i < text.length) {
             element.textContent += text.charAt(i);
@@ -268,14 +308,18 @@ function typeTextWithVoice(element, text, shouldSpeak) {
             clearInterval(interval);
         }
     }, 20);
+
     if (shouldSpeak) {
-        window.speechSynthesis.cancel(); // ✅ Stop any ongoing speech
+        window.speechSynthesis.cancel(); // Stop any ongoing speech
+
         const utterance = new SpeechSynthesisUtterance(cleanText);
-        // ✅ Natural voice settings
+
+        // Natural voice settings
         utterance.rate = 0.95;
         utterance.pitch = 1.0;
         utterance.volume = 1;
-        // ✅ Emotion-based voice modulation
+
+        // Emotion-based voice modulation
         if (text.includes("🎉") || text.includes("win")) {
             utterance.pitch = 1.2;
             utterance.rate = 1.05;
@@ -285,6 +329,7 @@ function typeTextWithVoice(element, text, shouldSpeak) {
         } else if (text.includes("love") || text.includes("sweet")) {
             utterance.pitch = 1.1;
         }
+
         const speak = () => {
             const voices = window.speechSynthesis.getVoices();
             const preferred = voices.find(v => v.name === 'Google US English') ||
@@ -294,6 +339,7 @@ function typeTextWithVoice(element, text, shouldSpeak) {
             if (preferred) utterance.voice = preferred;
             window.speechSynthesis.speak(utterance);
         };
+
         if (window.speechSynthesis.getVoices().length > 0) {
             speak();
         } else {
@@ -302,23 +348,35 @@ function typeTextWithVoice(element, text, shouldSpeak) {
                 window.speechSynthesis.onvoiceschanged = null;
             };
         }
-        // ✅ Stop mic during AI speech
+
+        // Stop mic during AI speech to prevent feedback
         if (recognition && isListening) {
+            console.log("🔇 Pausing mic during speech output...");
             recognition.stop();
-            setTimeout(() => {
-                try {
-                    recognition.start(); // ✅ Fix 6: Wrap start in try/catch
-                } catch (e) {
-                    console.error("Error restarting recognition after speech:", e);
-                }
-                // Reset mic button state after speech finishes if it was active
-                if (isListening) {
-                    resetMicButton(); // Go back to wake word listening
-                }
-            }, Math.min(cleanText.length * 80, 5000)); // Resume after speech
+            isListening = false; // Update flag immediately
+            updateMicButtonState(); // Update UI
+
+            utterance.onend = () => {
+                console.log("🔊 Speech finished, resuming mic...");
+                setTimeout(() => {
+                    try {
+                        // Fix 6: Wrap start in try/catch
+                        recognition.start();
+                        isListening = true; // Update flag
+                        updateMicButtonState(); // Update UI
+                        console.log("🎤 Mic resumed.");
+                    } catch (e) {
+                        console.error("Error restarting recognition after speech:", e);
+                        // Stay in stopped state, let user click button to restart
+                        isListening = false;
+                        updateMicButtonState();
+                    }
+                }, 300); // Small delay before restarting
+            };
         }
     }
 }
+
 // Typing Indicator
 function showTypingIndicator() {
     typingIndicator.style.display = "flex";
@@ -327,6 +385,7 @@ function showTypingIndicator() {
 function hideTypingIndicator() {
     typingIndicator.style.display = "none";
 }
+
 // Show Install Prompt
 function shouldShowInstallPrompt(message) {
     const triggers = [
@@ -336,8 +395,8 @@ function shouldShowInstallPrompt(message) {
     const lower = message.toLowerCase();
     return triggers.some(keyword => lower.includes(keyword));
 }
-// Helper: Check if command (not for AI)
-// ✅ Improved matches function with word boundaries (Fix from AI 2)
+
+// Helper: Check if command (not for AI) - Fix 5: Improved regex escaping
 function matches(text, keywords) {
     return keywords.some(keyword => {
         const trimmed = keyword.trim();
@@ -347,27 +406,11 @@ function matches(text, keywords) {
         return regex.test(text);
     });
 }
+
 // Get Reply from AI or Fallback
 async function getReply(message) {
     const lower = message.toLowerCase().replace(/[^\w\s]/g, "");
-    // --- Wake Word Detection for Mic ---
-    if (WAKE_WORDS.some(word => lower.includes(word)) && !isListening) {
-        isListening = true; // Enter active dictation mode
-        recognition.stop();
-        setTimeout(() => {
-            try {
-                recognition.start(); // ✅ Fix 6: Wrap start in try/catch
-            } catch (e) {
-                console.error("Error restarting recognition after wake word:", e);
-                resetMicButton(); // Reset on error
-            }
-            addMessage("Yes Sir, I'm here. How can I help you?", "ghost", isVoiceResponseEnabled);
-            micButton.innerHTML = "🟢";
-            micButton.style.backgroundColor = "#00cc44";
-            micButton.title = "Active - Listening";
-        }, 100);
-        return null; // Don't process wake word as a command
-    }
+
     // --- Install Prompt ---
     if (shouldShowInstallPrompt(message)) {
         if (deferredPrompt) {
@@ -387,17 +430,17 @@ async function getReply(message) {
         }
         return "Yes! Click the 'Install App' button below to install me on your device.";
     }
+
     // --- If NOT a command, let AI handle it (General Knowledge)
-    // Only use AI if it's loaded and the message isn't a recognized command
     if (aiModel && !isCommand(lower)) {
         try {
             const prompt = `
 ${PROFILE_CONTEXT}
-You are Ghost, Arpit Pandey's personal AI assistant.
+You are Ghost, a helpful AI assistant.
 Be helpful, concise, and professional.
 Answer this: "${message}"
 `;
-            // ✅ Fix 3: Corrected usage for text-generation pipeline
+            // Fix 3: Corrected usage for text-generation pipeline
             const result = await aiModel(prompt, { max_new_tokens: 200, return_full_text: false });
             const reply = result?.[0]?.generated_text?.trim() ||
                 "I'm not sure about that.";
@@ -408,19 +451,22 @@ Answer this: "${message}"
             console.error("AI generation failed:", err);
         }
     }
+
     // --- Commands (AI not needed) ---
+
     // Name Queries
-    if (matches(lower, ["my name", "mera naam", "kon hu"])) {
-        return `Your name is ${USER_NAME}, Sir.`;
+    if (matches(lower, ["my name", "who am i"])) {
+        return `Your name is ${USER_NAME}.`; // Use generic name
     }
-    if (matches(lower, ["your name", "tumhara naam", "kaun ho"])) {
-        return `I'm ${AI_NAME}, your personal AI assistant.`;
+    if (matches(lower, ["your name", "what is your name"])) {
+        return `I'm ${AI_NAME}, your AI assistant.`;
     }
+
     // Age Queries
-    if (matches(lower, ["my age", "meri umar", "main kitne saal ka hu"])) {
-        return "You are 20 years old, Sir.";
+    if (matches(lower, ["my age"])) {
+        return "I don't have your age information.";
     }
-    if (matches(lower, ["your age", "tumhari umar", "kitne din se ho"])) {
+    if (matches(lower, ["your age", "how old are you"])) {
         const today = new Date();
         const diffTime = Math.abs(today - AI_BIRTH_DATE);
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -428,12 +474,13 @@ Answer this: "${message}"
         const remainderDays = diffDays % 365;
         return `I am ${years} years and ${remainderDays} days old today.`;
     }
+
     // Task Manager
     if (lower.includes("add task") || lower.includes("task")) {
         const taskText = message.replace(/add task:?/i, "").trim();
         if (taskText) {
             const newTask = {
-                // ✅ Fix 2: Use safe ID generator
+                // Fix 2: Use safe ID generator
                 id: generateId(),
                 text: taskText,
                 date: new Date().toLocaleDateString()
@@ -455,9 +502,10 @@ Answer this: "${message}"
         saveTasks();
         return "🧹 All tasks cleared.";
     }
+
     // Expense Manager
     if (lower.includes("add expense") || lower.includes("expense")) {
-        // ✅ Improved regex for decimal amounts (Fix from AI 1)
+        // Improved regex for decimal amounts (Fix from AI 1 review)
         const match = message.match(/(?:₹\$?|\$)?\s*(\d+(?:\.\d{1,2})?)/i);
         const amount = match ? parseFloat(match[1]) : 0;
         if (amount > 0) {
@@ -485,7 +533,7 @@ Answer this: "${message}"
             }
 
             const newExpense = {
-                // ✅ Fix 2: Use safe ID generator
+                // Fix 2: Use safe ID generator
                 id: generateId(),
                 item, category, amount,
                 date: new Date().toLocaleDateString(),
@@ -515,6 +563,7 @@ Answer this: "${message}"
         saveExpenses();
         return "🧹 All expenses cleared.";
     }
+
     // Game
     if (lower.includes("play game") || lower.includes("stone paper scissors")) {
         return `Let's play! Choose Stone, Paper, or Scissors. I've chosen mine.`;
@@ -533,10 +582,11 @@ Answer this: "${message}"
         else result += "I win! 😎";
         return result;
     }
+
     // Maths
     if (lower.includes("solve") || /[+\-*/=]/.test(lower)) {
         try {
-            // ✅ Fix 6: Safer regex and evaluation (Fix from AI 1)
+            // Safer regex and evaluation (Fix from AI 1 review)
             const expr = message.replace(/[^0-9+\-*/().\s]/g, '').replace(/\s+/g, ''); // Remove non-math chars and extra spaces
             // Stricter validation regex for basic expressions
             if (!/^[\d\s()+\-*/.]+$/.test(expr) || expr.includes('/0')) {
@@ -554,6 +604,7 @@ Answer this: "${message}"
             return "I couldn't solve that. Please enter a valid math expression (e.g., 2+2, (5*3)-1).";
         }
     }
+
     // Quiz
     if (lower.includes("quiz") || lower.includes("question")) {
         return `🧠 JavaScript Quiz (5 Questions):\n` +
@@ -564,16 +615,18 @@ Answer this: "${message}"
             "5. What does 'DOM' stand for?\n" +
             "Reply with your answers, and I'll score you!";
     }
+
     // Version
-    if (lower === "--version" || lower.includes("version kya hai") || lower.includes("what is your version") || lower.includes("app version") || lower.includes("current version")) {
-        return `📌 Current Version: ${APP_VERSION}\nThis app was last updated on ${LAST_UPDATED}.\nDeveloped by Arpit Pandey.`;
+    if (lower === "--version" || lower.includes("version") || lower.includes("app version") || lower.includes("current version")) {
+        return `📌 Current Version: ${APP_VERSION}\nThis app was last updated on ${LAST_UPDATED}.`;
     }
     if (lower.includes("is my version updated") || lower.includes("check update") || lower.includes("latest version")) {
-        return `✅ Yes Sir, you are using the latest version: ${APP_VERSION}.\nLast updated: ${LAST_UPDATED}`;
+        return `✅ Yes, you are using the latest version: ${APP_VERSION}.\nLast updated: ${LAST_UPDATED}`;
     }
+
     // Default Replies
     if (matches(lower, ["hi", "hello", "hey", "hlo", "good morning", "good afternoon", "good evening", "sup"])) {
-        return "Hello Sir! How can I assist you today?";
+        return "Hello! How can I assist you today?";
     }
     if (matches(lower, ["how are you", "how are you doing", "how is it going", "whats up", "what's up", "how are things"])) {
         return "I'm functioning optimally, thank you! How is your day going?";
@@ -582,17 +635,18 @@ Answer this: "${message}"
         return "The current time is " + new Date().toLocaleTimeString();
     }
     if (matches(lower, ["thank", "thanks", "thx", "thank you", "appreciate it", "grateful"])) {
-        return "You're welcome, Sir! Let me know if you need anything else.";
+        return "You're welcome! Let me know if you need anything else.";
     }
     if (matches(lower, ["bye", "goodbye", "see you", "later", "good night", "i'm out", "leaving"])) {
-        return "Goodbye Sir! I'll be here whenever you call.";
+        return "Goodbye! I'll be here whenever you call.";
     }
     if (matches(lower, ["help", "need help", "can you help", "what can you do", "features", "capabilities"])) {
-        return "I can chat, tell time, respond to voice input, and more. Just ask me anything!";
+        return "I can chat, tell time, respond to voice input, manage tasks/expenses, play games, and solve math. Just ask!";
     }
     if (matches(lower, ["i love you", "love you", "you're awesome", "best ai", "you are amazing", "impressive"])) {
-        return "Aww, that's sweet! I'm here for you, always — professionally, of course.";
+        return "Aww, that's sweet! I'm here to help.";
     }
+
     // Fallback
     const fallbacks = [
         "I'm not sure about that, but I'm learning every day!",
@@ -604,127 +658,133 @@ Answer this: "${message}"
     return fallbacks[Math.floor(Math.random() * fallbacks.length)];
 }
 
-// ✅ Mic Button: Sleep Mode + Wake Words
+// Mic Button: Toggle continuous speech recognition
 micButton.addEventListener("click", () => {
     if (!recognition) return;
-    if (isListening) {
-        // Currently actively listening for dictation, stop it
+
+    console.log(`🎤 Mic button clicked. Current state: ${recognition.state || 'unknown'}, isListening flag: ${isListening}`);
+
+    // Check actual state if available
+    const actualState = recognition.state || (isListening ? 'listening' : 'inactive');
+
+    if (actualState === 'listening') {
+        console.log("🛑 Stopping continuous recognition...");
         recognition.stop();
-        resetMicButton(); // Go back to wake word mode
+        isListening = false;
     } else {
-        // Currently in wake word mode or stopped, start listening for wake words
+        console.log("▶️ Starting continuous recognition...");
         try {
-            recognition.abort(); // Ensure stopped
+            // Ensure it's stopped before starting
+            recognition.abort();
             recognition.start();
-            isListening = false; // Start in wake-word detection mode
-            micButton.innerHTML = "⚪";
-            micButton.style.backgroundColor = "#666";
-            micButton.title = "Listening for wake word...";
+            isListening = true;
         } catch (e) {
             console.error("Speech start error:", e);
-            resetMicButton();
+            isListening = false;
+            // Attempt to reset
+            setTimeout(() => {
+                if (!isListening && recognition) {
+                    try {
+                        // Fix 6: Wrap start in try/catch
+                        recognition.start();
+                        isListening = true;
+                    } catch (e2) {
+                        console.error("Retry start error:", e2);
+                        isListening = false;
+                    }
+                }
+                updateMicButtonState();
+            }, 1000);
         }
     }
+    updateMicButtonState(); // Update UI after action
 });
-// Reset mic button to sleep mode (wake word listening)
-// ✅ Fix 6: Improved resetMicButton to handle state and errors more robustly
-function resetMicButton() {
-    isListening = false; // Reset to wake-word listening state
-    micButton.innerHTML = "⚪";
-    micButton.style.backgroundColor = "#666";
-    micButton.title = "Listening for wake word...";
-    if (recognition) {
-        recognition.abort(); // Ensure stopped before restart
-        setTimeout(() => {
-            if (!isListening) { // Only restart if still in wake-word mode
-                try {
-                    recognition.start(); // ✅ Fix 6: Wrap start in try/catch
-                } catch (e) {
-                    console.error("Error restarting recognition in resetMicButton:", e);
-                    // Optional: Add UI feedback for persistent mic issues
-                }
-            }
-        }, 500);
-    }
-}
-// Handle recognition events
+
+// Handle recognition events for continuous mode
 if (recognition) {
     recognition.onresult = (e) => {
-        const resultIndex = e.resultIndex;
-        const transcript = e.results[resultIndex][0].transcript.trim();
-        // console.log("Recognition result:", transcript, "isFinal:", e.results[resultIndex].isFinal, "isListening:", isListening);
-        // Handle final results
-        if (e.results[resultIndex].isFinal) {
-            // Check for wake words if NOT currently in active dictation mode
-            if (!isListening) {
-                const matched = WAKE_WORDS.some(word => transcript.toLowerCase().includes(word));
-                if (matched) {
-                    isListening = true; // Switch to active dictation mode
-                    recognition.stop();
-                    setTimeout(() => {
-                        try {
-                            recognition.start(); // ✅ Fix 6: Wrap start in try/catch
-                        } catch (e) {
-                            console.error("Error restarting recognition after internal wake word:", e);
-                            resetMicButton(); // Reset on error
-                            return; // Exit if restart failed
-                        }
-                        addMessage("Yes Sir, I'm here. How can I help you?", "ghost", isVoiceResponseEnabled);
-                        micButton.innerHTML = "🟢";
-                        micButton.style.backgroundColor = "#00cc44";
-                        micButton.title = "Active - Listening";
-                    }, 100);
+        // Process all results, not just final ones, for better responsiveness
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+            const transcript = e.results[i][0].transcript.trim();
+            if (transcript) {
+                console.log(`🎤 Recognized (final: ${e.results[i].isFinal}):`, transcript);
+                if (e.results[i].isFinal) {
+                    // Final result: send as message
+                    userInput.value = transcript;
+                    sendMessage();
+                } else {
+                    // Interim result: could update UI live if desired
+                    // e.g., show interim text in input field
+                    // userInput.value = transcript;
                 }
-                // If not a wake word, ignore (stay in wake-word mode)
-            } else {
-                // Currently in active dictation mode, process the transcript as user input
-                userInput.value = transcript;
-                sendMessage(); // Send the dictated message
-                // After sending, go back to wake-word mode
-                resetMicButton();
             }
         }
-        // Handle interim results (optional, for live feedback)
-        // else if (transcript) {
-        //     // Could update UI with interim results if needed
-        // }
     };
+
     recognition.onerror = (e) => {
-        // console.error("Speech recognition error:", e.error);
-        // Handle specific errors if needed
-        if (e.error !== 'no-speech' && e.error !== 'aborted') {
-            console.error("Speech error:", e.error);
+        console.error("🎤 Speech recognition error:", e.error);
+        // Handle specific errors
+        if (e.error === 'no-speech') {
+            console.log("🎤 No speech detected, continuing to listen...");
+            // Recognition will automatically restart due to continuous=true
+        } else if (e.error === 'audio-capture') {
+            console.error("🎤 No microphone found.");
+            micButton.title = "No microphone found";
+            micButton.style.backgroundColor = "#ff6b6b";
+            micButton.innerHTML = "🔴";
+            isListening = false;
+        } else if (e.error === 'not-allowed') {
+            console.error("🎤 Permission to use microphone was denied.");
+            micButton.title = "Mic access denied";
+            micButton.style.backgroundColor = "#ff6b6b";
+            micButton.innerHTML = "🔴";
+            isListening = false;
+        } else {
+            console.warn("🎤 Other recognition error, attempting restart...");
+            isListening = false; // Assume stopped on error
         }
-        // Restart recognition in the appropriate mode if it ends unexpectedly
-        if (!isListening) { // If was in wake-word mode
+        updateMicButtonState();
+    };
+
+    recognition.onend = () => {
+        console.log("🎤 Speech recognition ended.");
+        // In continuous mode, it should restart automatically, but let's be safe
+        if (isListening) {
+            console.log("🔁 Attempting to restart continuous recognition...");
             setTimeout(() => {
-                resetMicButton(); // Restart wake-word listening
-            }, 1000);
-        } else { // If was in active dictation mode
-            resetMicButton(); // Go back to wake-word mode on error
+                if (isListening && recognition) {
+                    try {
+                        // Fix 6: Wrap start in try/catch
+                        recognition.start();
+                        console.log("🎤 Recognition restarted.");
+                    } catch (e) {
+                        console.error("🔁 Error restarting recognition:", e);
+                        isListening = false;
+                        updateMicButtonState();
+                    }
+                }
+            }, 500);
+        } else {
+            // If intentionally stopped, just update UI
+            updateMicButtonState();
         }
     };
-    recognition.onend = () => {
-        // console.log("Recognition ended. isListening:", isListening);
-        // Automatically restart recognition in the correct mode
-        setTimeout(() => {
-            if (!isListening) {
-                // Was in wake-word mode, restart listening for wake words
-                resetMicButton();
-            } else {
-                // Was in active dictation mode, but ended, go back to wake-word mode
-                resetMicButton();
-            }
-        }, 500);
+
+    recognition.onstart = () => {
+        console.log("🎤 Speech recognition started.");
+        isListening = true;
+        updateMicButtonState();
     };
 }
+
 // Voice Toggle
 voiceButton.addEventListener("click", () => {
     isVoiceResponseEnabled = !isVoiceResponseEnabled;
-    localStorage.setItem("voiceEnabled", isVoiceResponseEnabled);
+    localStorage.setItem("voiceEnabled", isVoiceResponseEnabled); // Fix: Store boolean as string correctly
     voiceButton.textContent = isVoiceResponseEnabled ? "🔊" : "🔇";
     voiceButton.title = isVoiceResponseEnabled ? "Disable voice output" : "Enable voice output";
 });
+
 // LocalStorage
 function saveChatHistory() {
     const messages = Array.from(document.querySelectorAll(".message"))
@@ -762,36 +822,36 @@ function clearChatHistory() {
     log.style.margin = "10px";
     chatArea.appendChild(log);
 }
+
 // Send on Enter & Click
 sendButton.addEventListener("click", sendMessage);
 userInput.addEventListener("keypress", e => {
     if (e.key === "Enter") sendMessage();
 });
+
 // PWA Install Prompt
 window.addEventListener("beforeinstallprompt", (e) => {
     e.preventDefault();
     deferredPrompt = e;
-    installButton.hidden = false; // ✅ Show when available
+    installButton.hidden = false;
 });
-// Ensure voices load (keep this line, remove the empty assignment later if needed)
-// window.speechSynthesis.onvoiceschanged = () => { }; // ✅ Removed redundant empty handler
 
-// ✅ Optional: Hide install button permanently after installation (Fix from AI 2)
+// Optional: Hide install button permanently after installation
 window.addEventListener('appinstalled', () => {
     console.log('PWA was installed');
     installButton.hidden = true;
-    // Optionally, persist this state if needed across reloads
-    // localStorage.setItem('appInstalled', 'true');
+    // Persist this state if needed across reloads
+    localStorage.setItem('appInstalled', 'true');
 });
-// Uncomment the following lines if you want to check persisted state on load
-// if (localStorage.getItem('appInstalled') === 'true') {
-//     installButton.hidden = true;
-// }
 
-// Helper function to check if message is a command (kept as is, used in logic)
+// Check persisted state on load for install button
+if (localStorage.getItem('appInstalled') === 'true') {
+    installButton.hidden = true;
+}
+
+// Helper function to check if message is a command
 function isCommand(lower) {
     const commands = [
-        "wake up", "hey", "hello", "bhai sun", "suno", "status", "online",
         "install", "download", "pwa", "add task", "show tasks", "clear tasks",
         "add expense", "show expenses", "clear expenses", "play game",
         "stone", "paper", "scissors", "rock", "solve", "quiz", "version",
@@ -799,3 +859,6 @@ function isCommand(lower) {
     ];
     return commands.some(cmd => lower.includes(cmd));
 }
+
+// Initial UI update
+updateMicButtonState();
