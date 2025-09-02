@@ -28,7 +28,14 @@ const AI_NAME = "Ghost";
 const AI_BIRTH_DATE = new Date("2025-09-01"); // Ghost's "birth" date
 
 // Version Info
-const APP_VERSION = "Ghost v2.4.0"; // Update this with each release
+const APP_VERSION = "Ghost v2.5.0"; // Update this with each release
+
+// Auto Update Date
+const LAST_UPDATED = new Date().toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "long",
+    year: "numeric"
+});
 
 // Arpit's Profile Context (Updated from portfolio)
 const PROFILE_CONTEXT = `
@@ -48,7 +55,7 @@ His projects include:
 6. Expense Manager — Track income, expenses, and spending trends.
 
 He is always learning new technologies and exploring trends.
-Portfolio: https://apandey-9046.github.io/arpit.portfolio_project/    
+Portfolio: https://apandey-9046.github.io/arpit.portfolio_project/        
 `;
 
 // Expense & Task State
@@ -84,7 +91,7 @@ window.addEventListener("DOMContentLoaded", async () => {
 
     // Show welcome message
     if (chatArea.children.length === 0) {
-        addMessage("Please enter your password to proceed, Sir", "ghost", true);
+        addMessage("Welcome back, Sir! Please enter your password to proceed.", "ghost", true);
     }
 
     // Register Service Worker
@@ -102,7 +109,29 @@ window.addEventListener("DOMContentLoaded", async () => {
     } catch (err) {
         console.warn("⚠️ AI Model failed to load. Using fallback replies.", err);
     }
+
+    // ✅ Check Mic Permission on Load
+    checkMicPermission();
 });
+
+// Check Mic Permission
+async function checkMicPermission() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        console.log("✅ Mic permission granted");
+        stream.getTracks().forEach(track => track.stop());
+        // Restart mic in sleep mode
+        if (recognition && !isListening) {
+            recognition.stop();
+            setTimeout(() => recognition.start(), 500);
+        }
+    } catch (err) {
+        console.warn("⚠️ Mic permission denied");
+        micButton.title = "Mic blocked. Allow in browser settings";
+        micButton.style.backgroundColor = "#ff6b6b";
+        micButton.innerHTML = "🔴";
+    }
+}
 
 // User Typing Indicator
 userInput.addEventListener("input", () => {
@@ -468,8 +497,13 @@ async function getReply(message) {
     }
 
     // --- Version Check ---
-    if (lower === "--version" || lower.includes("version kya hai") || lower.includes("what is your version") || lower.includes("app version")) {
-        return `📌 Current Version: ${APP_VERSION}\n\nThis app was last updated on 12 May 2025.\nDeveloped by Arpit Pandey.`;
+    if (lower === "--version" || lower.includes("version kya hai") || lower.includes("what is your version") || lower.includes("app version") || lower.includes("current version")) {
+        return `📌 Current Version: ${APP_VERSION}\n\nThis app was last updated on ${LAST_UPDATED}.\nDeveloped by Arpit Pandey.`;
+    }
+
+    // --- Is my version updated? ---
+    if (lower.includes("is my version updated") || lower.includes("check update") || lower.includes("latest version")) {
+        return `✅ Yes Sir, you are using the latest version: ${APP_VERSION}.\nLast updated: ${LAST_UPDATED}`;
     }
 
     // --- Existing Logic (Priority Replies) ---

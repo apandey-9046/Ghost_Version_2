@@ -1,6 +1,6 @@
 // service-worker.js
 
-const CACHE_NAME = "ghost-ai-v2.2"; // Update version to force refreshing the cache.
+const CACHE_NAME = "Ghost v2.5.0"; // Update version to force refreshing the cache.
 
 const urlsToCache = [
     "./",
@@ -16,7 +16,7 @@ self.addEventListener("install", (event) => {
     event.waitUntil(
         caches.open(CACHE_NAME).then((cache) => cache.addAll(urlsToCache))
     );
-    self.skipWaiting(); 
+    self.skipWaiting();
 });
 
 // Activate: Clear old caches
