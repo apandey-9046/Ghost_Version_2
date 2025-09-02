@@ -18,6 +18,13 @@ let deferredPrompt = null; // For PWA install
 let silenceTimer = null; // For auto-send after silence
 let aiModel = null; // For Qwen
 
+// Set app height for mobile devices
+function setAppHeight() {
+    document.documentElement.style.setProperty('--app-height', `${window.innerHeight}px`);
+}
+window.addEventListener('resize', setAppHeight);
+setAppHeight(); // Call on load
+
 // Passwords
 const START_CHAT_PASSWORD = "Admin123";
 const CLEAR_CHAT_PASSWORD = "Arpit@232422";
