@@ -27,6 +27,9 @@ const USER_NAME = "Arpit";
 const AI_NAME = "Ghost";
 const AI_BIRTH_DATE = new Date("2025-09-01"); // Ghost's "birth" date
 
+// Version Info
+const APP_VERSION = "Ghost v2.3.0"; // Update this with each release
+
 // Arpit's Profile Context (Updated from portfolio)
 const PROFILE_CONTEXT = `
 Arpit Pandey is a 20-year-old Full Stack Developer passionate about building sleek, modern web apps with smooth UX.
@@ -45,7 +48,7 @@ His projects include:
 6. Expense Manager — Track income, expenses, and spending trends.
 
 He is always learning new technologies and exploring trends.
-Portfolio: https://apandey-9046.github.io/arpit.portfolio_project/
+Portfolio: https://apandey-9046.github.io/arpit.portfolio_project/  
 `;
 
 // Expense & Task State
@@ -462,6 +465,11 @@ async function getReply(message) {
             "4. Which method adds an element to the end of an array?\n" +
             "5. What does 'DOM' stand for?\n\n" +
             "Reply with your answers, and I'll score you!";
+    }
+
+    // --- Version Check ---
+    if (lower === "--version" || lower.includes("version kya hai") || lower.includes("what is your version") || lower.includes("app version")) {
+        return `📌 Current Version: ${APP_VERSION}\n\nThis app was last updated on 12 May 2025.\nDeveloped by Arpit Pandey.`;
     }
 
     // --- Existing Logic (Priority Replies) ---
